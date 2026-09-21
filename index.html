@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Working with Oliver</title>
+<style>
+  :root {
+    color-scheme: light;
+    --accent:#004225;
+    --accent-light:#0d7749;
+    --accent-bg:#f5faf8;
+    --surface:#ffffff;
+    --border:#e6ece9;
+    --text:#1a1a1a;
+    --mid:#586059;
+    --muted:#8b938d;
+    --warning:#d97706;
+    --warning-bg:#fffbeb;
+    --p:0%;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior:auto; }
+    * { transition:none !important; }
+  }
+  body {
+    margin:0;
+    background:var(--surface);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size:15px; line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline:2px solid var(--accent-light); outline-offset:3px; border-radius:3px; }
+
+  /* ---------- scroll progress ---------- */
+  .progress {
+    position:fixed; top:0; right:0; width:62%; height:3px;
+    background:rgba(0,0,0,0.05); z-index:20;
+  }
+  .progress span {
+    display:block; height:100%; width:var(--p);
+    background:linear-gradient(90deg, var(--accent), var(--accent-light));
+  }
+
+  .split { display:grid; grid-template-columns:minmax(320px, 38%) minmax(0, 62%); min-height:100vh; }
+
+  /* ---------- Recto: fixed pane ---------- */
+  .recto {
+    position:sticky; top:0; height:100vh;
+    background:linear-gradient(150deg, var(--accent), var(--accent-light));
+    color:#fff;
+    padding:48px 42px 34px;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .recto h1 { margin:0; font-size:36px; line-height:1.08; font-weight:600; letter-spacing:-0.035em; }
+  .recto .strap { margin:14px 0 0; font-size:15px; line-height:1.55; color:rgba(255,255,255,0.84); max-width:32ch; }
+
+  .contents-head {
+    margin:32px 0 0; font-size:14px; font-weight:600; letter-spacing:-0.01em;
+    color:#fff; padding-bottom:11px;
+    border-bottom:1px solid rgba(255,255,255,0.22);
+  }
+
+  .contents { margin-top:14px; flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; }
+  .contents::-webkit-scrollbar { display:none; }
+  .contents a {
+    display:block; position:relative;
+    padding:5px 0 5px 24px;
+    font-size:13px; line-height:1.35;
+    color:rgba(255,255,255,0.68); text-decoration:none;
+    transition:color .18s;
+  }
+  .contents a::before {
+    content:""; position:absolute; left:0; top:12px;
+    width:10px; height:1px; background:rgba(255,255,255,0.4);
+    transition:width .18s, height .18s, background .18s, top .18s;
+  }
+  .contents a:hover { color:#fff; }
+  .contents a.on { color:#fff; font-weight:600; }
+  .contents a.on::before { width:17px; height:2px; top:11.5px; background:#fff; }
+
+  .recto .foot {
+    margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.18);
+    display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+    font-size:12.5px; color:rgba(255,255,255,0.7);
+  }
+  .recto .fill { background:rgba(255,255,255,0.16); color:#fff; }
+  .allbtn {
+    font:inherit; font-size:12px; cursor:pointer;
+    background:rgba(255,255,255,0.14); color:#fff;
+    border:1px solid rgba(255,255,255,0.3); border-radius:20px;
+    padding:4px 12px; transition:background .15s, color .15s;
+  }
+  .allbtn:hover { background:#fff; color:var(--accent); border-color:#fff; }
+
+  /* ---------- Verso: scrolling pane ---------- */
+  .verso { padding:52px 60px 96px 56px; }
+
+  .sect {
+    max-width:60ch; margin:0 0 8px; scroll-margin-top:24px;
+    border-bottom:1px solid var(--border);
+  }
+  .sect:first-of-type { border-top:1px solid var(--border); }
+
+  summary { list-style:none; cursor:pointer; padding:20px 0; display:flex; align-items:flex-start; gap:16px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .txt { flex:1; min-width:0; }
+  summary .h {
+    display:block; font-size:24px; line-height:1.22; font-weight:600; letter-spacing:-0.025em;
+    color:var(--text); transition:color .15s;
+  }
+  summary:hover .h { color:var(--accent); }
+  summary .teaser { display:block; margin-top:5px; font-size:13.5px; color:var(--muted); }
+  .sect[open] summary .teaser { display:none; }
+
+  .chev {
+    flex:none; width:26px; height:26px; margin-top:3px;
+    border:1px solid var(--border); border-radius:50%;
+    position:relative; transition:border-color .15s, background .15s;
+  }
+  .chev::before, .chev::after {
+    content:""; position:absolute; background:var(--accent);
+    left:50%; top:50%; transform:translate(-50%,-50%);
+  }
+  .chev::before { width:10px; height:1.5px; }
+  .chev::after  { width:1.5px; height:10px; transition:opacity .2s; }
+  .sect[open] .chev::after { opacity:0; }
+  summary:hover .chev { border-color:var(--accent-light); background:var(--accent-bg); }
+
+  .body { padding:0 0 30px; }
+
+  h3 { margin:28px 0 10px; font-size:15.5px; font-weight:600; letter-spacing:-0.005em; color:var(--accent); }
+  .body > h3:first-child { margin-top:0; }
+  p { margin:0 0 15px; }
+  p.lead { font-size:16.5px; color:var(--mid); }
+  p:last-child { margin-bottom:0; }
+  strong { font-weight:600; }
+  em { font-style:italic; }
+  a.ref { color:var(--text); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:1px; text-decoration-color:#cfd8d3; }
+  a.ref:hover { text-decoration-color:var(--accent-light); }
+
+  .fill { background:var(--warning-bg); color:var(--warning); padding:0 5px; border-radius:3px; font-weight:500; white-space:nowrap; }
+
+  ul.plain { list-style:none; margin:0 0 18px; padding:0; }
+  ul.plain li { position:relative; padding-left:18px; margin:0 0 12px; }
+  ul.plain li::before { content:""; position:absolute; left:0; top:11px; width:7px; height:7px; border-radius:50%; border:1px solid #c8d4ce; }
+  ul.plain li:last-child { margin-bottom:0; }
+
+  .mirror {
+    background:var(--accent-bg); border:1px solid var(--border);
+    border-radius:10px; padding:22px 24px; margin:0 0 18px;
+  }
+  .mirror:last-child { margin-bottom:0; }
+  .mirror p:first-child { font-size:18px; letter-spacing:-0.015em; }
+
+  /* the five layers */
+  .layers { border-top:1px solid var(--border); margin:4px 0 12px; }
+  .layer {
+    display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:14px;
+    padding:12px 0; border-bottom:1px solid var(--border);
+  }
+  .layer .n { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; width:14px; }
+  .layer .yes { font-size:16px; font-weight:600; color:var(--accent); letter-spacing:-0.01em; text-align:right; }
+  .layer .pivot { width:22px; height:1px; background:#c8d4ce; }
+  .layer .no { font-size:13.5px; color:var(--muted); }
+  .layers-note { font-size:13px; color:var(--muted); margin:0 0 26px; }
+
+  ul.tests { margin:0 0 18px; padding:0; list-style:none; }
+  ul.tests li { padding:12px 0; border-bottom:1px solid var(--border); }
+  ul.tests li:first-child { border-top:1px solid var(--border); }
+
+  ul.reading { list-style:none; margin:0 0 16px; padding:0; }
+  ul.reading li { padding:15px 0; border-bottom:1px solid var(--border); }
+  ul.reading li:first-child { border-top:1px solid var(--border); }
+  ul.reading .title { font-weight:600; }
+  ul.reading .by { color:var(--muted); font-size:13.5px; }
+  ul.reading .why { color:var(--mid); font-size:14.5px; margin-top:3px; }
+
+  @media (max-width: 940px) {
+    .progress { width:100%; }
+    .split { display:block; }
+    .recto { position:static; height:auto; padding:34px 24px 26px; }
+    .recto h1 { font-size:29px; }
+    .contents-head, .contents { display:none; }
+    .recto .foot { margin-top:20px; }
+    .verso { padding:28px 24px 72px; }
+    .sect { max-width:none; }
+    summary { padding:17px 0; }
+    summary .h { font-size:21px; }
+    .layer { grid-template-columns:auto 1fr; gap:4px 12px; }
+    .layer .yes { text-align:left; }
+    .layer .pivot { display:none; }
+    .layer .no { grid-column:2; }
+  }
+  @media print {
+    .progress, .chev, .allbtn, .contents { display:none !important; }
+    .split { display:block; }
+    .recto { position:static; height:auto; background:var(--accent) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .verso { padding:24px 0 0; }
+    body { font-size:10.5pt; }
+    .sect { max-width:none; }
+    summary { break-after:avoid; padding:16px 0 8px; }
+    .sect .body { display:block !important; }
+    summary .teaser { display:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" aria-hidden="true"><span id="pfill"></span></div>
+
+<div class="split">
+
+  <aside class="recto">
+    <div>
+      <h1>Working with Oliver</h1>
+      <p class="strap">A shortcut to how I tend to work, what I value, and how we can get the best from one another.</p>
+      <h2 class="contents-head" id="contents-head">Contents</h2>
+    </div>
+
+    <nav class="contents" id="contents" aria-labelledby="contents-head">
+      <a href="#why">Why this exists</a>
+      <a href="#short">If you read nothing else</a>
+      <a href="#reach">Where I am and how to reach me</a>
+      <a href="#teams">How I think about healthy teams</a>
+      <a href="#goals">Setting goals and measuring what actually matters</a>
+      <a href="#ownership">Ownership, autonomy and decisions</a>
+      <a href="#feedback">Feedback, and how I get things wrong</a>
+      <a href="#retros">Learning from what we have done</a>
+      <a href="#expect">What you can expect from me</a>
+      <a href="#honest">Keeping this honest</a>
+      <a href="#reading">Things I have found influential</a>
+    </nav>
+
+    <div class="foot">
+      <span>Version 1, <span class="fill">[month year]</span> &amp;Open</span>
+      <button class="allbtn" id="toggleAll" type="button">Collapse all</button>
+    </div>
+  </aside>
+
+  <main class="verso">
+
+    <details class="sect" id="why" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Why this exists</span>
+          <span class="teaser">A user manual, and two caveats about it.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p class="lead">This is inspired by Claire Hughes Johnson's idea of a “user manual”: a shortcut to understanding how I tend to work, what I value, and how we can get the best from one another.</p>
+        <p>Two caveats. First, I am new here and you are not. If something in this guide cuts against how &amp;Open already works well, say so. The company does not win that argument by default, and nor do I. I would rather we talked it through than have you work around me.</p>
+        <p>Second, this is what I aim for. It is a work in progress, incomplete, and probably always will be. Tell me when the guide and the reality diverge.</p>
+      </div>
+    </details>
+
+    <details class="sect" id="short" open>
+      <summary>
+        <span class="txt">
+          <span class="h">If you read nothing else</span>
+          <span class="teaser">Clarity, ownership and momentum.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <div class="mirror">
+          <p><strong>I value clarity, ownership and momentum.</strong></p>
+          <p>Tell me what matters, what has changed and what you recommend. Be clear about what is confirmed, what is proposed and what is still uncertain. Raise problems early. If nothing material has changed, it is perfectly fine to say so.</p>
+          <p>I care about the quality of our work, whether it creates real value for our customers, and whether &amp;Open is a better place to work because of it.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="sect" id="reach" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Where I am and how to reach me</span>
+          <span class="teaser">Hours, channels, response times, one-to-ones and meetings.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>I am a father of four. A lot of my time outside work goes on the logistics of their lives.</p>
+        <p>My planned office hours are 9.30 to 5, four days a week in the office. In practice my hours vary, and there will be days when I leave early for a pick-up or an activity. Being out of the office does not mean I am unavailable. I would rather you interrupted me remotely than saved something up for the next time I am in the room, and I am happy to take a call when I am out.</p>
+        <ul class="plain">
+          <li><strong>Slack over email</strong> for day-to-day work: questions, updates, decisions. Email is for things that need to leave the company.</li>
+          <li><strong>Response times.</strong> Slack within two hours during working hours. Email within a day. If something is blocking you and I have not replied, chase me. That is not rude, it is you surfacing a priority.</li>
+          <li><strong>Genuinely urgent?</strong> Call or text me. My number is in my Slack profile. I would rather be interrupted than find out late.</li>
+          <li><strong>Out of hours.</strong> If a Slack message from me lands at 6am or 9pm, that is me getting through things when I can. It is not an expectation that you read it or reply at that hour. Nothing I send outside working hours needs a reply outside working hours unless I say so.</li>
+          <li><strong>One-to-ones.</strong> A focused fifteen minutes each week beats a long monthly session. I use it for decisions, blockers, shifting priorities and anything where I can help. We will book separate time for personal development and for anything that needs deeper thinking. One-to-ones are also your time. I like it when you drive the agenda and bring me what you need to discuss.</li>
+          <li><strong>Status updates.</strong> I do not need a meeting to get a status update. I would much rather have it in writing: what has been done, what is blocked, what decisions are needed and what is planned next.</li>
+          <li><strong>Meetings.</strong> Send a pre-read in advance, with the key points, questions and required decisions marked. Meetings are for discussion and decisions, not readouts. If a meeting is not needed, cancel it and send a written update instead.</li>
+        </ul>
+        <p>My remit covers GTM, merchandising and operations, including finance, people and tech. I also set and run the operating cadence of the business. If you are unsure whether something is mine to decide, ask. The boundaries will take a few months to settle and I would rather redirect you than have you wait.</p>
+      </div>
+    </details>
+
+    <details class="sect" id="teams" open>
+      <summary>
+        <span class="txt">
+          <span class="h">How I think about healthy teams</span>
+          <span class="teaser">Lencioni's five layers, and why the order matters.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>Patrick Lencioni's <a class="ref" href="https://www.tablegroup.com/topics-and-resources/teamwork-5-dysfunctions/">Five Dysfunctions of a Team</a> has shaped how I work more than any other framework. The idea is that team success is not random. It builds, and each layer rests on the one below it.</p>
+
+        <div class="layers">
+          <div class="layer"><span class="n">5</span><span class="yes">Collective results</span><span class="pivot"></span><span class="no">not status or silos</span></div>
+          <div class="layer"><span class="n">4</span><span class="yes">Accountability</span><span class="pivot"></span><span class="no">not low standards</span></div>
+          <div class="layer"><span class="n">3</span><span class="yes">Commitment</span><span class="pivot"></span><span class="no">not ambiguity</span></div>
+          <div class="layer"><span class="n">2</span><span class="yes">Constructive conflict</span><span class="pivot"></span><span class="no">not artificial harmony</span></div>
+          <div class="layer"><span class="n">1</span><span class="yes">Trust</span><span class="pivot"></span><span class="no">not invulnerability</span></div>
+        </div>
+        <p class="layers-note">Read it from the base up. Nothing above a layer works until that layer holds.</p>
+
+        <p>What that means in practice:</p>
+        <ul class="plain">
+          <li><strong>Build trust.</strong> Be open, ask for help, admit mistakes and assume positive intent. This is the base for a reason. Everything above it is unavailable without it. It is also the layer I have to go first on, not you.</li>
+          <li><strong>Engage in constructive conflict.</strong> Challenge ideas directly and respectfully. Productive disagreement produces better decisions. Artificial harmony produces polite, expensive mistakes. If a meeting contains no disagreement at all, we should ask whether we needed the meeting.</li>
+          <li><strong>Create commitment.</strong> Make decisions clear, make sure people have been heard, and align behind the outcome once a direction is set. Disagree and commit is fine. Quietly disagreeing and not committing is not.</li>
+          <li><strong>Hold one another accountable.</strong> Be clear about expectations and address issues early. Peer accountability is far more powerful than anything I can impose. A team that leaves all of it to me is a team I am slowing down.</li>
+          <li><strong>Focus on collective results.</strong> Put the team's outcome ahead of individual status or functional territory, and use evidence to know whether we are making progress.</li>
+        </ul>
+        <p>The reason I care about the order is diagnostic. When a team is missing its numbers, the instinct is to fix the top layer. Usually the problem sits two or three layers below. People are not saying what they think, so nobody really committed, so nobody feels accountable. If you expect me to push on delivery and I push on candour instead, that is why.</p>
+      </div>
+    </details>
+
+    <details class="sect" id="goals" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Setting goals and measuring what actually matters</span>
+          <span class="teaser">Setting OKRs, the five questions before agreeing one, and running them.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>I use OKRs because it is a simple framework. It forces us to focus on a small number of objectives at once, and it gives us a quantitative way to measure progress towards them. They are not a reporting exercise, and they are not a task list with better branding.</p>
+
+        <h3>Setting them</h3>
+        <ul class="plain">
+          <li><strong>An Objective is what we are trying to achieve.</strong> Qualitative, memorable, time-bound, and ambitious enough to be slightly uncomfortable. If it reads like business as usual, it is not an objective.</li>
+          <li><strong>Key Results are how we will know we got there.</strong> Two to four per objective. This is the part that matters most. A key result measures the outcome we want to see, not the tasks we completed and not a vanity metric that flatters us.</li>
+          <li><strong>Three or four objectives per team per quarter, maximum.</strong> The objectives should not be a list of everything we are doing. That is the thing OKRs are meant to replace.</li>
+          <li><strong>“Launch X” is a milestone, not a key result.</strong> The key result is what changes <em>because</em> X launched. Occasionally a milestone is the best available measure. That is fine, but it should be rare and we should say so out loud.</li>
+          <li><strong>Say upfront whether an OKR is committed or aspirational.</strong> Committed means we expect to deliver it in full. Aspirational means 70% is a good outcome. Mixing the two is a common way this goes wrong.</li>
+        </ul>
+
+        <h3>Measuring them</h3>
+        <p>This is the part that usually gets skipped, and it is the part that determines whether any of it was worth doing. Before we agree a key result, I want us to be able to answer all five of these:</p>
+        <ul class="tests">
+          <li><strong>What is the number, and the unit?</strong> Not “improve” or “significantly reduce”.</li>
+          <li><strong>Is it tracking the outcome?</strong> Is it backward-looking? Is it a vanity metric?</li>
+          <li><strong>What is the baseline?</strong> No baseline, no target.</li>
+          <li><strong>Where does the data come from, and who owns it?</strong> Named source, named person. If the number needs a manual reconciliation every quarter, we will have stopped producing it by month three.</li>
+          <li><strong>How often will we look at it?</strong> Monthly at a minimum. If we cannot get a fresh reading that often, it is probably not a measure we can steer by.</li>
+        </ul>
+
+        <h3>Running them</h3>
+        <ul class="plain">
+          <li><strong>Set quarterly, check in every week or fortnight.</strong></li>
+          <li><strong>Every OKR carries a RAG status.</strong> Green is on track, amber is at risk, red is off track. The status is a judgement about trajectory, not a restatement of the current number. An OKR can be behind and still be green if we understand why and we can see it recovering.</li>
+          <li><strong>Score honestly.</strong> Being behind is not in itself a bad thing. The metrics exist to flag problems early enough for us to do something about them. A miss that arrives as a surprise is the failure. Do not hide bad news.</li>
+          <li><strong>If a measure never changes a decision, we stop tracking it.</strong> Data should create insight and action, not the appearance of rigour.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="sect" id="ownership" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Ownership, autonomy and decisions</span>
+          <span class="teaser">Own the outcome, not the task, and when to bring me in.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>I value people who own the outcome rather than the tasks they were assigned. Ownership means anticipating what comes next, using your judgement, working across teams, and raising risks before they become problems.</p>
+        <p>Autonomy and accountability travel together. You should have room to decide how best to achieve an outcome. In return I expect progress communicated, risks surfaced early, and responsibility taken for the result.</p>
+        <p>If something is not working, do not assume someone else will fix it. Flag it, and help move it forward even when you cannot solve every part of it.</p>
+        <p>Every meaningful commitment needs an owner, an intended outcome and a committed date. Plans change. Renegotiate a commitment early rather than letting it slip.</p>
+        <div class="mirror">
+          <p><strong>Bring me in when</strong> a decision changes an agreed direction, creates a significant commitment, is hard to reverse, or needs explicit approval. Otherwise, decide.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="sect" id="feedback" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Feedback, and how I get things wrong</span>
+          <span class="teaser">Direct and brief, plus my four most likely failure modes.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>My feedback is usually direct and often brief. If I say something is too complex, too noisy, unclear or clumsy, I mean exactly that. It is feedback on the work, not a judgement about you.</p>
+        <p>Iteration is part of the process for me. I understand what is needed far better when I can react to something tangible. An early draft is more useful to me than a polished final version that is off track.</p>
+        <p>For my part, I like to write things down to make them concrete. If I share a diagram or a written proposal, that is me trying to move a discussion forward. I am not trying to take ownership of what you are doing. Treat anything I produce as input to react to, not as the answer.</p>
+        <p>You are welcome to challenge me. Tell me what you disagree with, what evidence or experience informs your view, and what you would do instead. Equally, tell me when my feedback is unclear, when priorities conflict, or when I have not given you enough context.</p>
+
+        <h3>Where I am most likely to be the problem</h3>
+        <ul class="plain">
+          <li><strong>I go deep on details others thought were settled.</strong> If I return to the same point twice, it usually means I think the distinction matters. If you think I am focused on the wrong one, say so. You will often be right.</li>
+          <li><strong>I ask for the numbers behind an assertion,</strong> sometimes harder than the decision warrants. Push back if the analysis costs more than the decision is worth.</li>
+          <li><strong>I will sometimes build the thing myself</strong> rather than wait. That is how I work, and it is curiosity rather than a lack of trust in you. Call it out when it lands badly.</li>
+          <li><strong>I default to simplifying.</strong> Occasionally that strips out something that mattered. Tell me what I have cut.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="sect" id="retros" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Learning from what we have done</span>
+          <span class="teaser">Retros, and why I would like them to become a habit.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>I strongly believe in retrospectives and continuous improvement. Retros turn experience into learning. They are not about blame or ceremony. The point is to understand what worked, what did not, and what we do differently next time.</p>
+        <p>I will often ask for a retro at the end of a project, or when something has gone wrong that we need to learn from. What I would really like is for retros to become part of how we work, set up by you, because you see the value in them yourself.</p>
+      </div>
+    </details>
+
+    <details class="sect" id="expect" open>
+      <summary>
+        <span class="txt">
+          <span class="h">What you can expect from me</span>
+          <span class="teaser">Seven commitments, and permission to hold me to them.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <ul class="plain">
+          <li><strong>Context, not just tasks.</strong> I will explain the outcome we are trying to achieve and why it matters. If I have not, ask. I have probably assumed knowledge you do not have.</li>
+          <li><strong>Decisions, quickly.</strong> If you need one, you will get an answer or a date for one. Sometimes I will need time to think, and if so I will say so rather than leave you waiting.</li>
+          <li><strong>Reasoning behind a no.</strong> You will always get why, not just what.</li>
+          <li><strong>Pre-reads actually read.</strong> If you send material in advance, I will have read it before we meet. If I have not, I will say so and we will move the meeting.</li>
+          <li><strong>Roadblocks removed.</strong> Escalate to me and I will either clear it or tell you honestly that I cannot.</li>
+          <li><strong>Direct, useful feedback,</strong> and recognition when the work is good, said out loud and in front of others.</li>
+          <li><strong>A changed mind when the evidence changes,</strong> and an acknowledgement when I have got something wrong. I am still learning too.</li>
+        </ul>
+        <p>If I am not doing these things, tell me.</p>
+      </div>
+    </details>
+
+    <details class="sect" id="honest" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Keeping this honest</span>
+          <span class="teaser">High standards, not perfection, and how this document evolves.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>I like high standards but I do not expect perfection. I value thoughtful people who care about the outcome, communicate honestly and keep moving. We should be able to do serious work without taking ourselves too seriously.</p>
+        <p>This is version 1. As we work together we will evolve it, so that it matches how we actually work well together.</p>
+      </div>
+    </details>
+
+    <details class="sect" id="reading" open>
+      <summary>
+        <span class="txt">
+          <span class="h">Things I have found influential</span>
+          <span class="teaser">Five sources behind most of what is above. Not required reading.</span>
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </summary>
+      <div class="body">
+        <p>Not required reading. These are the sources behind most of what is above, so if something here does not quite make sense, the original will explain it better than I will.</p>
+        <ul class="reading">
+          <li>
+            <div><span class="title"><a class="ref" href="https://www.tablegroup.com/topics-and-resources/teamwork-5-dysfunctions/">The Five Dysfunctions of a Team</a></span> <span class="by">Patrick Lencioni</span></div>
+            <div class="why">The framework above, in full. It is a short business fable rather than a textbook, so it is an easy afternoon. The model long outlasts the story.</div>
+          </li>
+          <li>
+            <div><span class="title"><a class="ref" href="https://www.danpink.com/books/drive/">Drive</a></span> <span class="by">Daniel Pink</span></div>
+            <div class="why">Autonomy, mastery and purpose as the real drivers of performance on anything non-routine. This is the evidence behind why so much of this guide is about giving people room rather than instructions.</div>
+          </li>
+          <li>
+            <div><span class="title"><a class="ref" href="https://a16z.com/books/the-hard-thing-about-hard-things/">The Hard Thing About Hard Things</a></span> <span class="by">Ben Horowitz</span></div>
+            <div class="why">Honest about the parts of the job that have no good answer, only a least-bad one. Worth reading for the chapters on difficult decisions and on telling people the truth, more than for the war stories.</div>
+          </li>
+          <li>
+            <div><span class="title"><a class="ref" href="https://press.stripe.com/scaling-people">Scaling People</a></span> <span class="by">Claire Hughes Johnson</span></div>
+            <div class="why">Where the idea for this document came from. Practical on operating cadence, goal-setting and feedback, with templates you can lift straight off the page.</div>
+          </li>
+          <li>
+            <div><span class="title"><a class="ref" href="https://www.whatmatters.com/">Measure What Matters</a></span> <span class="by">John Doerr</span></div>
+            <div class="why">The standard reference on OKRs. The free examples and resources on the accompanying site are arguably more useful day to day than the book itself.</div>
+          </li>
+        </ul>
+        <p>If you have something that changed how you work, send it to me. I would rather this list grew from the team than from me.</p>
+      </div>
+    </details>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('.sect'));
+  var links = Array.prototype.slice.call(document.querySelectorAll('#contents a'));
+  var btn = document.getElementById('toggleAll');
+
+  var ticking = false;
+  function progress() {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = h > 4 ? (window.scrollY / h) * 100 : 0;
+    document.documentElement.style.setProperty('--p', Math.min(100, Math.max(0, pct)).toFixed(2) + '%');
+    ticking = false;
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { window.requestAnimationFrame(progress); ticking = true; }
+  }, { passive: true });
+  window.addEventListener('resize', progress);
+
+  function setActive(id) {
+    links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + id); });
+  }
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      for (var i = 0; i < sections.length; i++) {
+        if (visible[sections[i].id]) { setActive(sections[i].id); break; }
+      }
+    }, { rootMargin: '-8% 0px -72% 0px', threshold: 0 });
+    sections.forEach(function (s) { io.observe(s); });
+  }
+  if (sections.length) { setActive(sections[0].id); }
+
+  links.forEach(function (a) {
+    a.addEventListener('click', function () {
+      var t = document.getElementById(a.getAttribute('href').slice(1));
+      if (t && !t.open) { t.open = true; }
+      window.requestAnimationFrame(progress);
+    });
+  });
+
+  function syncButton() {
+    var anyOpen = sections.some(function (s) { return s.open; });
+    btn.textContent = anyOpen ? 'Collapse all' : 'Expand all';
+    btn.setAttribute('aria-expanded', anyOpen ? 'true' : 'false');
+  }
+  btn.addEventListener('click', function () {
+    var anyOpen = sections.some(function (s) { return s.open; });
+    sections.forEach(function (s) { s.open = !anyOpen; });
+    syncButton();
+    progress();
+  });
+  sections.forEach(function (s) {
+    s.addEventListener('toggle', function () { syncButton(); progress(); });
+  });
+
+  syncButton();
+  progress();
+})();
+</script>
+</body>
+</html>
